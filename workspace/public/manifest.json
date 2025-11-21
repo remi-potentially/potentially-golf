@@ -1,0 +1,21 @@
+{
+  "name": "Potentially",
+  "short_name": "Potentially",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffb46",
+  "theme_color": "#fffb46",
+  "description": "Your personal AI golf coach. Potentially turns your round data into smart, structured practice so you can lower your handicap and enjoy the game more.",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

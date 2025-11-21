@@ -1,0 +1,115 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Alegreya', serif;
+  overflow-x: hidden;
+}
+
+@layer base {
+  :root {
+    /* New theme based on user request: Yellow, Black, White */
+    --background: 0 0% 100%;       /* white */
+    --foreground: 0 0% 0%;         /* black */
+
+    --card: 0 0% 100%;              /* white */
+    --card-foreground: 0 0% 0%;     /* black */
+
+    --popover: 0 0% 100%;           /* white */
+    --popover-foreground: 0 0% 0%;  /* black */
+
+    --primary: 58 100% 64%;         /* #fffb46 - Yellow */
+    --primary-foreground: 0 0% 0%;  /* black */
+
+    --secondary: 0 0% 95%;         /* Light Gray */
+    --secondary-foreground: 0 0% 0%; /* black */
+
+    --muted: 0 0% 97%;              /* Lighter Gray */
+    --muted-foreground: 0 0% 0%;   /* black */
+
+    --accent: 58 100% 64%;          /* #fffb46 - Yellow */
+    --accent-foreground: 0 0% 0%;   /* black */
+
+    --destructive: 0 84% 60%;       /* Standard Red */
+    --destructive-foreground: 0 0% 100%; /* white */
+
+    --success: 142.1 70.6% 45.1%; /* Added green */
+    --success-foreground: 0 0% 100%; /* white */
+
+    --border: 58 100% 64%;          /* #fffb46 - Yellow for card outlines */
+    --input: 0 0% 90%;              /* Light gray for input borders */
+    --input-background: 0 0% 100%;   /* White for input fill */
+    --ring: 58 100% 64%;            /* Yellow for focus ring */
+
+    --chart-1: 190 70% 50%;
+    --chart-2: 30 80% 60%;
+    --chart-3: 220 60% 65%;
+    --chart-4: 120 40% 55%;
+    --chart-5: 0 70% 60%;
+    
+    --radius: 0.5rem;
+
+    /* Custom variables updated for new theme */
+    --custom-chart-line: hsl(var(--accent)); 
+    --custom-recommended-border: hsl(var(--primary));
+    --custom-ai-button-bg: hsl(var(--accent));
+    --custom-ai-button-fg: hsl(var(--accent-foreground));
+    --custom-ai-text-bg-rgb: 255, 255, 255; /* white */
+    --custom-bg-overlay-rgb: 0, 0, 0; /* black overlay */
+  }
+
+  .dark {
+    --background: 0 0% 10%;        /* Very Dark Gray/Off-black */
+    --foreground: 0 0% 98%;        /* Near White */
+
+    --card: 0 0% 12%;              /* Darker Gray */
+    --card-foreground: 0 0% 98%;   /* Near White */
+
+    --popover: 0 0% 10%;            /* Off-black */
+    --popover-foreground: 0 0% 98%; /* Near White */
+
+    --primary: 58 100% 64%;         /* #fffb46 - Yellow */
+    --primary-foreground: 0 0% 0%;  /* black */
+    
+    --secondary: 0 0% 25%;         /* Muted Dark Gray */
+    --secondary-foreground: 0 0% 98%; /* Near White */
+
+    --muted: 0 0% 25%;             /* Muted Dark Gray */
+    --muted-foreground: 0 0% 70%;  /* Lighter Gray */
+
+    --accent: 58 100% 64%;          /* #fffb46 - Yellow */
+    --accent-foreground: 0 0% 0%;   /* black */
+
+    --destructive: 0 63% 31%;       /* Dark Red */
+    --destructive-foreground: 0 0% 100%; /* white */
+
+    --success: 142.1 70.6% 45.1%; /* Added green */
+    --success-foreground: 0 0% 100%; /* white */
+
+    --border: 58 100% 64%;          /* #fffb46 - Yellow for card outlines */
+    --input: 0 0% 25%;              /* Muted Dark Gray for border */
+    --input-background: 0 0% 15%;    /* Darker Gray for fill */
+    --ring: 58 100% 64%;            /* Yellow for focus */
+
+    /* Custom variables for dark theme */
+    --custom-chart-line: hsl(var(--accent)); 
+    --custom-recommended-border: hsl(var(--primary));
+    --custom-ai-button-bg: hsl(var(--accent));
+    --custom-ai-button-fg: hsl(var(--accent-foreground));
+    --custom-ai-text-bg-rgb: 36, 41, 36; /* Corresponds to card color */
+    --custom-bg-overlay-rgb: 0, 0, 0; /* black overlay */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground overflow-x-hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
