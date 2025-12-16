@@ -2,10 +2,12 @@
 import type {NextConfig} from 'next';
 import withSerwistInit from "@serwist/next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const serwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development",
+  disable: isDev,
 });
 
 const nextConfig: NextConfig = {
@@ -36,7 +38,6 @@ const nextConfig: NextConfig = {
   webpack: (config) => {
     config.externals.push({
       'node-fetch': 'commonjs2 node-fetch',
-      'handlebars': 'commonjs2 handlebars',
     });
     return config;
   },
