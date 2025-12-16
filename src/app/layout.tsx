@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "next-themes"; 
-import { AuthProvider } from '@/context/AuthContext';
+import { FirebaseClientProvider } from '@/firebase';
 
 export default function RootLayout({
   children,
@@ -27,7 +27,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@400;700&family=Alegreya+Sans:wght@500&family=Belleza&family=Pacifico&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-          <AuthProvider>
+          <FirebaseClientProvider>
             <ThemeProvider
               attribute="class"
               defaultTheme="system"
@@ -37,7 +37,7 @@ export default function RootLayout({
               {children}
               <Toaster />
             </ThemeProvider>
-          </AuthProvider>
+          </FirebaseClientProvider>
       </body>
     </html>
   );
