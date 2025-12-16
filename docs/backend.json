@@ -1,0 +1,415 @@
+{
+  "entities": {
+    "Round": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Round",
+      "type": "object",
+      "description": "Represents a single round of golf, capturing stats and observations.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Round entity."
+        },
+        "roundDate": {
+          "type": "string",
+          "description": "The date the round was played.",
+          "format": "date"
+        },
+        "courseName": {
+          "type": "string",
+          "description": "The name of the golf course."
+        },
+        "teePlayedOff": {
+          "type": "string",
+          "description": "The tee the player used (e.g., White, Blue)."
+        },
+        "holesPlayed": {
+          "type": "string",
+          "description": "The number of holes played (9 or 18)."
+        },
+        "currentHandicap": {
+          "type": "string",
+          "description": "The player's handicap at the time of the round."
+        },
+        "grossScore": {
+          "type": "string",
+          "description": "The player's total score for the round."
+        },
+        "coursePar": {
+          "type": "string",
+          "description": "The par for the course (total)."
+        },
+        "scoreToPar": {
+          "type": "string",
+          "description": "The player's score relative to par (e.g., +2, -1)."
+        },
+        "drivingDistance": {
+          "type": "string",
+          "description": "Average driving distance in yards."
+        },
+        "fairwaysInRegulation": {
+          "type": "string",
+          "description": "Percentage of fairways hit in regulation."
+        },
+        "fairwaysMissedLeft": {
+          "type": "string",
+          "description": "Percentage of fairways missed on the left."
+        },
+        "fairwaysMissedRight": {
+          "type": "string",
+          "description": "Percentage of fairways missed on the right."
+        },
+        "drivingPenalties": {
+          "type": "string",
+          "description": "Number of penalty strokes incurred while driving."
+        },
+        "greensInRegulation": {
+          "type": "string",
+          "description": "Percentage of greens hit in regulation."
+        },
+        "greensMissedLeft": {
+          "type": "string",
+          "description": "Percentage of greens missed on the left."
+        },
+        "greensMissedRight": {
+          "type": "string",
+          "description": "Percentage of greens missed on the right."
+        },
+        "greensMissedShort": {
+          "type": "string",
+          "description": "Percentage of greens missed short."
+        },
+        "greensMissedLong": {
+          "type": "string",
+          "description": "Percentage of greens missed long."
+        },
+        "approachPenalties": {
+          "type": "string",
+          "description": "Number of penalty strokes incurred on approach shots."
+        },
+        "upAndDown": {
+          "type": "string",
+          "description": "Percentage of successful up and downs (chipping onto the green and holing out)."
+        },
+        "sandSaves": {
+          "type": "string",
+          "description": "Percentage of successful sand saves (getting the ball out of the bunker and holing out)."
+        },
+        "notApplicableSandSaves": {
+          "type": "boolean",
+          "description": "Indicates if sand saves are not applicable for the round."
+        },
+        "puttsTotal": {
+          "type": "string",
+          "description": "Total number of putts taken during the round."
+        },
+        "threePuttsOrMore": {
+          "type": "string",
+          "description": "Number of holes with three or more putts."
+        },
+        "puttsAttempted5yards": {
+          "type": "string",
+          "description": "Number of putts attempted from 5 yards and in."
+        },
+        "puttsMade5yards": {
+          "type": "string",
+          "description": "Number of putts made from 5 yards and in."
+        },
+        "notApplicable5yards": {
+          "type": "boolean",
+          "description": "Indicates if putts from 5 yards are not applicable for the round."
+        },
+        "puttsAttempted10yards": {
+          "type": "string",
+          "description": "Number of putts attempted from 10 yards and in."
+        },
+        "puttsMade10yards": {
+          "type": "string",
+          "description": "Number of putts made from 10 yards and in."
+        },
+        "notApplicable10yards": {
+          "type": "boolean",
+          "description": "Indicates if putts from 10 yards are not applicable for the round."
+        },
+        "puttsAttempted20yards": {
+          "type": "string",
+          "description": "Number of putts attempted from 20 yards and in."
+        },
+        "puttsMade20yards": {
+          "type": "string",
+          "description": "Number of putts made from 20 yards and in."
+        },
+        "notApplicable20yards": {
+          "type": "boolean",
+          "description": "Indicates if putts from 20 yards are not applicable for the round."
+        },
+        "puttsAttempted21plusYards": {
+          "type": "string",
+          "description": "Number of putts attempted from 21+ yards out."
+        },
+        "puttsMade21plusYards": {
+          "type": "string",
+          "description": "Number of putts made from 21+ yards out."
+        },
+        "notApplicable21plusYards": {
+          "type": "boolean",
+          "description": "Indicates if putts from 21+ yards are not applicable for the round."
+        },
+        "generalObservations": {
+          "type": "string",
+          "description": "General notes and observations about the round."
+        }
+      },
+      "required": [
+        "id",
+        "roundDate",
+        "courseName",
+        "holesPlayed",
+        "grossScore",
+        "coursePar"
+      ]
+    },
+    "PracticeDrill": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PracticeDrill",
+      "type": "object",
+      "description": "Represents a golf practice drill.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PracticeDrill entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the drill."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the drill (e.g., Driving, Putting)."
+        },
+        "difficulty": {
+          "type": "string",
+          "description": "The difficulty level of the drill (e.g., Beginner, Intermediate)."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the drill."
+        },
+        "scoringMethodology": {
+          "type": "string",
+          "description": "The method used to score the drill."
+        },
+        "targetsWeakness": {
+          "type": "array",
+          "description": "Array of weakness tags that this drill is designed to target.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "difficulty",
+        "description",
+        "scoringMethodology"
+      ]
+    },
+    "PracticePlanItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PracticePlanItem",
+      "type": "object",
+      "description": "Represents an item in a user's practice plan, linking a drill to user-specific data.",
+      "properties": {
+        "drillId": {
+          "type": "string",
+          "description": "Reference to PracticeDrill. (Relationship: PracticeDrill 1:N PracticePlanItem)"
+        },
+        "score": {
+          "type": "string",
+          "description": "The user's score on the drill."
+        },
+        "notes": {
+          "type": "string",
+          "description": "User's notes on the drill."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Indicates if the drill has been completed."
+        },
+        "dateAdded": {
+          "type": "string",
+          "description": "The date the drill was added to the practice plan.",
+          "format": "date-time"
+        },
+        "timeTaken": {
+          "type": "number",
+          "description": "The time taken to complete the drill, in minutes."
+        }
+      },
+      "required": [
+        "drillId",
+        "dateAdded",
+        "completed"
+      ]
+    },
+    "JournalEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "JournalEntry",
+      "type": "object",
+      "description": "Represents a journal entry, typically related to practice or round reflections.",
+      "properties": {
+        "notes": {
+          "type": "string",
+          "description": "The content of the journal entry."
+        },
+        "date": {
+          "type": "string",
+          "description": "The date and time the entry was created.",
+          "format": "date-time"
+        },
+        "drillName": {
+          "type": "string",
+          "description": "The name of the drill the entry is related to (if applicable)."
+        }
+      },
+      "required": [
+        "notes",
+        "date"
+      ]
+    },
+    "CompletedDrillHistory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CompletedDrillHistory",
+      "type": "object",
+      "description": "Represents a history of drills that have been completed, used for tracking recurring issues.",
+      "properties": {
+        "drillId": {
+          "type": "string",
+          "description": "Reference to PracticeDrill. (Relationship: PracticeDrill 1:N CompletedDrillHistory)"
+        },
+        "dateCompleted": {
+          "type": "string",
+          "description": "The date the drill was completed.",
+          "format": "date"
+        },
+        "recurrenceScore": {
+          "type": "number",
+          "description": "A score representing how frequently this drill has been completed."
+        }
+      },
+      "required": [
+        "drillId",
+        "dateCompleted"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/practiceDrills/{practiceDrillId}",
+        "definition": {
+          "entityName": "PracticeDrill",
+          "schema": {
+            "$ref": "#/backend/entities/PracticeDrill"
+          },
+          "description": "Stores pre-defined practice drills available to all users.",
+          "params": [
+            {
+              "name": "practiceDrillId",
+              "description": "The unique identifier for the practice drill."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/rounds/{roundId}",
+        "definition": {
+          "entityName": "Round",
+          "schema": {
+            "$ref": "#/backend/entities/Round"
+          },
+          "description": "Stores rounds played by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "roundId",
+              "description": "The unique identifier for the round."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/practicePlan/{planItemId}",
+        "definition": {
+          "entityName": "PracticePlanItem",
+          "schema": {
+            "$ref": "#/backend/entities/PracticePlanItem"
+          },
+          "description": "Stores practice plan items for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "planItemId",
+              "description": "The unique identifier for the practice plan item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/journalEntries/{journalEntryId}",
+        "definition": {
+          "entityName": "JournalEntry",
+          "schema": {
+            "$ref": "#/backend/entities/JournalEntry"
+          },
+          "description": "Stores journal entries created by a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "journalEntryId",
+              "description": "The unique identifier for the journal entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/completedDrillHistory/{completedDrillHistoryId}",
+        "definition": {
+          "entityName": "CompletedDrillHistory",
+          "schema": {
+            "$ref": "#/backend/entities/CompletedDrillHistory"
+          },
+          "description": "Stores completed drill history for a user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "completedDrillHistoryId",
+              "description": "The unique identifier for the completed drill history item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to provide a secure, scalable, and debuggable solution for the FairwayForward golf app. The structure follows the core design principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), QAPs (Rules are not Filters), and Invariants, as outlined in the design strategy.\n\n**Authorization Independence:** To achieve authorization independence and eliminate the need for `get()` calls in security rules, key authorization data (e.g., user ownership) is embedded directly within each relevant document. All user-owned data is organized under the `/users/{userId}` path to simplify authorization rules.\n\n**Structural Segregation:** Documents with different security requirements are stored in separate collections. All documents within a single collection share the same security posture. PracticeDrill documents are stored in the top-level `/practiceDrills` collection since these drills are pre-defined and are not user-specific. User specific data (rounds, practice plan items, journal entries, completed drill history) are all stored under the `users/{userId}` collection.\n\n**Access Modeling:** Path-based ownership is used extensively. For example, rounds are stored under `/users/{userId}/rounds/{roundId}`, indicating that each round is owned by a specific user. The practice plan items are stored under `/users/{userId}/practicePlan/{planItemId}`, also owned by the respective user. Journal entries and completed drill history also follow this pattern, ensuring clear ownership and simplified rules.\n\n**QAPs Support:** The structure supports secure `list` operations by utilizing path-based ownership. Security rules can easily filter lists based on the `request.auth.uid`, allowing users to only access their own data. For example, listing rounds under `/users/{userId}/rounds` will only return rounds owned by the authenticated user.\n\n**Invariants:** The structure supports data integrity by enforcing ownership, timestamps, and denormalized data (e.g., ownership denormalization)."
+  }
+}

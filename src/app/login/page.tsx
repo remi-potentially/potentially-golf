@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { firebaseApp } from '@/lib/firebase/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useAuth, useFirestore } from '@/firebase';
 import { CustomCard } from '@/components/custom/CustomCard';
 import { InputField } from '@/components/custom/InputField';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const auth = useAuth();
+  const db = useFirestore();
 
   const handlePasswordReset = async () => {
     if (!email) {
@@ -28,9 +30,12 @@ export default function LoginPage() {
       });
       return;
     }
+    if (!auth) {
+        toast({ title: "Error", description: "Authentication service is not available.", variant: "destructive" });
+        return;
+    }
     setLoading(true);
     try {
-      const auth = getAuth(firebaseApp);
       await sendPasswordResetEmail(auth, email);
       toast({
         title: "Password Reset Email Sent",
@@ -71,16 +76,15 @@ export default function LoginPage() {
         });
         return;
     }
+    
+    if (!auth || !db) {
+        toast({ title: "Error", description: "Firebase service is not available.", variant: "destructive" });
+        return;
+    }
 
     setLoading(true);
 
     try {
-      if (!firebaseApp) {
-        throw new Error("Firebase is not initialized.");
-      }
-      const auth = getAuth(firebaseApp);
-      const db = getFirestore(firebaseApp);
-
       if (isSignUp) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -113,7 +117,7 @@ export default function LoginPage() {
         case 'auth/user-not-found':
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          description = "Invalid email or password. Please check your credentials and try again.";
+          description = "Invalid email or password. Please check your credentials and try again, or sign up if you don't have an account.";
           break;
         case 'auth/invalid-email':
           description = "The email address is not valid.";

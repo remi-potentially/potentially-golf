@@ -87,13 +87,12 @@ import { buildPracticePlan } from '@/ai/flows/agent-coach-planning';
 import { goalManagerAgent } from '@/ai/flows/goal-manager-agent';
 
 
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, useFirestore, useFirebaseInstances } from '@/firebase';
 import LoginPage from './login/page';
 import { getAuth, signOut } from "firebase/auth";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { firebaseApp, db, storage } from '@/lib/firebase/firebase';
 
 const HoleMap = dynamic(() => import('@/components/custom/HoleMap'), {
   ssr: false,
@@ -691,7 +690,9 @@ const getRationaleForTag = (tag: string): string => {
 
 
 const MainApp = () => {
-  const { user, loginCount } = useAuth();
+  const user = useAuth();
+  const db = useFirestore();
+  const { firebaseApp } = useFirebaseInstances();
   const { setTheme } = useTheme();
   
   const [_currentPage, _setCurrentPage] = React.useState<CurrentPage>('dashboard');
@@ -729,7 +730,7 @@ const MainApp = () => {
 
   // Function to handle enabling notifications
   const handleEnableNotifications = async () => {
-    if (!firebaseApp || !("Notification" in window) || !user) {
+    if (!firebaseApp || !("Notification" in window) || !user || !db) {
         toast({ title: "Unsupported", description: "Notifications are not supported on this device or browser.", variant: "destructive"});
         return;
     }
@@ -2174,7 +2175,7 @@ const handleBuildPlanWithAI = async () => {
         
         if (finalNotes.trim()) {
             const journalSnapshot = await getDocs(query(collection(db, 'users', user.uid, 'journal'), orderBy('date', 'desc')));
-            setJournalEntries(journalSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as JournalEntry);
+            setJournalEntries(journalSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as JournalEntry[]);
         }
 
         // Reset reflection state for this item
@@ -3216,6 +3217,7 @@ const handleBuildPlanWithAI = async () => {
     );
   }
 
+  const loginCount = 0; // Replace with actual logic if needed.
   const libraryUnlocked = uniqueDrillsWithReflectionsCount >= 10;
   const showLoginPrompt = !hasLoggedRounds && loginCount >= 3 && !loginPromptDismissed;
   
@@ -5884,6 +5886,8 @@ export default function HomePage() {
 
 
     
+
+
 
 
 
