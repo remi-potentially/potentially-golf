@@ -1,15 +1,151 @@
-
+/**
+ * This ruleset enforces a strict user-ownership model for a golf performance tracking application.
+ *
+ * Core Philosophy:
+ * All user-generated data (golf rounds, practice plans, journal entries) is considered private and is
+ * strictly accessible only by the user who created it. A separate, top-level collection of practice
+ * drills is publicly readable by any authenticated user but is not writable by clients, ensuring a
+ * secure separation between shared application content and private user data.
+ *
+ * Data Structure:
+ * The data is organized hierarchically. All user-specific data is nested under the `/users/{userId}` path,
+ * making it simple to secure entire data trees for individual users. A top-level `/practiceDrills`
+ * collection holds shared, read-only content.
+ *
+ * Key Security Decisions:
+ * - Default Deny: All operations are denied unless explicitly allowed.
+ * - Strict Ownership: A user can only read or write data within their own `/users/{userId}` document tree.
+ * - No User Listing: It is impossible for one user to discover or access the data of another user.
+ * - Segregated Content: Publicly readable "template" data (`practiceDrills`) is stored in a separate
+ *   top-level collection from private user data. Client-side modifications to this shared data are disallowed.
+ *
+ * Denormalization for Authorization:
+ * This ruleset relies on path-based authorization. The user's UID is part of the document path
+ * (e.g., `/users/{userId}/...`), which is the most performant and secure way to enforce ownership
+ * without needing extra document reads (`get()`) or storing redundant `ownerId` fields on every sub-collection document.
+ *
+ * Structural Segregation:
+ * The design uses separate collections for data with different access patterns.
+ * - `/practiceDrills`: A public, top-level collection for all users to read.
+ * - `/users/{userId}/...`: Private subcollections (rounds, practice plans, etc.) scoped to each user.
+ * This separation is more secure and performant than using a single collection with a flag.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to create their own document, and read/write any sub-collections.
-    match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
 
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+    // Helper functions to promote readable, secure, and maintainable rules.
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the given userId.
+     * This is the primary function for enforcing data ownership.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    /**
+     * Checks for ownership on an existing document. Used for safe updates and deletes.
+     * This prevents modifying or deleting a document that does not exist.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+    
+    /**
+     * @description
+     *   Stores predefined practice drills available to all users.
+     *   This collection is read-only for clients to ensure data integrity.
+     * @path /practiceDrills/{practiceDrillId}
+     * @allow (get) An authenticated user reads a specific drill: `db.collection('practiceDrills').doc('drill123').get()`
+     * @deny (create) Any user attempts to create a new drill.
+     * @principle
+     *   Public Read with Admin-Only Writes. Since no admin role is defined for client-side
+     *   operations, all writes are disabled.
+     */
+    match /practiceDrills/{practiceDrillId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    match /users/{userId} {
+      /**
+       * @description
+       *   Stores a user's golf rounds. Only the user who owns these rounds can
+       *   create, read, update, or delete them.
+       * @path /users/{userId}/rounds/{roundId}
+       * @allow (create) Authenticated user `user123` creates a round in their own path: `db.collection('users/user123/rounds').add({...})`
+       * @deny (get) User `user456` tries to read a round belonging to `user123`: `db.collection('users/user123/rounds').doc('roundAbc').get()`
+       * @principle
+       *   Restricts access to a user's own data tree through path-based ownership.
+       */
+      match /rounds/{roundId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+      
+      /**
+       * @description
+       *   Stores items in a user's practice plan. Only the owner can manage their plan.
+       * @path /users/{userId}/practicePlan/{planItemId}
+       * @allow (list) Authenticated user `user123` lists items in their own practice plan: `db.collection('users/user123/practicePlan').get()`
+       * @deny (update) User `user456` tries to update an item in `user123`'s plan.
+       * @principle
+       *   Restricts access to a user's own data tree through path-based ownership.
+       */
+      match /practicePlan/{planItemId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+      
+      /**
+       * @description
+       *   Stores a user's private journal entries. Access is restricted to the owner.
+       * @path /users/{userId}/journalEntries/{journalEntryId}
+       * @allow (delete) Authenticated user `user123` deletes their own journal entry.
+       * @deny (list) User `user456` tries to list journal entries for `user123`.
+       * @principle
+       *   Restricts access to a user's own data tree through path-based ownership.
+       */
+      match /journalEntries/{journalEntryId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
+      
+      /**
+       * @description
+       *   Stores a user's history of completed drills. This data is private to the user.
+       * @path /users/{userId}/completedDrillHistory/{completedDrillHistoryId}
+       * @allow (create) Authenticated user `user123` adds a new completed drill to their history.
+       * @deny (get) An unauthenticated user tries to read a completed drill record.
+       * @principle
+       *   Restricts access to a user's own data tree through path-based ownership.
+       */
+      match /completedDrillHistory/{completedDrillHistoryId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
       }
     }
   }

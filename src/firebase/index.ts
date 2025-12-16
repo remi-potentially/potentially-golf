@@ -1,42 +1,50 @@
-
 'use client';
 
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
-import firebaseConfig from './config';
+import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore'
 
-export { FirebaseClientProvider } from './client-provider';
-// Re-export hooks from the provider
-export { useAuth, useFirestore, useFirebaseApp, useFirebase } from './provider';
-
-// --- SERVICE INITIALIZATION ---
-
-let firebaseApp: FirebaseApp;
-let auth: Auth;
-let firestore: Firestore;
-
-// This logic ensures Firebase is initialized only once on the client.
-if (typeof window !== 'undefined') {
+// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+export function initializeFirebase() {
   if (!getApps().length) {
-    firebaseApp = initializeApp(firebaseConfig);
-  } else {
-    firebaseApp = getApp();
+    // Important! initializeApp() is called without any arguments because Firebase App Hosting
+    // integrates with the initializeApp() function to provide the environment variables needed to
+    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
+    // without arguments.
+    let firebaseApp;
+    try {
+      // Attempt to initialize via Firebase App Hosting environment variables
+      firebaseApp = initializeApp();
+    } catch (e) {
+      // Only warn in production because it's normal to use the firebaseConfig to initialize
+      // during development
+      if (process.env.NODE_ENV === "production") {
+        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
+      }
+      firebaseApp = initializeApp(firebaseConfig);
+    }
+
+    return getSdks(firebaseApp);
   }
-  auth = getAuth(firebaseApp);
-  firestore = getFirestore(firebaseApp);
+
+  // If already initialized, return the SDKs with the already initialized App
+  return getSdks(getApp());
 }
 
-/**
- * A hook that returns the initialized Firebase App, Auth, and Firestore instances.
- * This is intended for use in client components.
- */
-export function useFirebaseInstances() {
-  // In a client component, the provider ensures these are initialized.
-  const app = useFirebaseApp();
+export function getSdks(firebaseApp: FirebaseApp) {
   return {
-    firebaseApp: app,
-    auth: getAuth(app),
-    firestore: getFirestore(app),
+    firebaseApp,
+    auth: getAuth(firebaseApp),
+    firestore: getFirestore(firebaseApp)
   };
 }
+
+export * from './provider';
+export * from './client-provider';
+export * from './firestore/use-collection';
+export * from './firestore/use-doc';
+export * from './non-blocking-updates';
+export * from './non-blocking-login';
+export * from './errors';
+export * from './error-emitter';
