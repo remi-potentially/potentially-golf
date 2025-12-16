@@ -113,7 +113,7 @@ export default function LoginPage() {
         case 'auth/user-not-found':
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          description = "Invalid email or password. Please check your credentials and try again.";
+          description = "Invalid email or password. Please check your credentials or sign up if you don't have an account.";
           break;
         case 'auth/invalid-email':
           description = "The email address is not valid.";
