@@ -87,7 +87,7 @@ import { buildPracticePlan } from '@/ai/flows/agent-coach-planning';
 import { goalManagerAgent } from '@/ai/flows/goal-manager-agent';
 
 
-import { useAuth, useFirestore, useFirebaseInstances } from '@/firebase';
+import { useUser, useFirestore, useFirebaseInstances, useAuth } from '@/firebase';
 import LoginPage from './login/page';
 import { getAuth, signOut } from "firebase/auth";
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
@@ -690,7 +690,7 @@ const getRationaleForTag = (tag: string): string => {
 
 
 const MainApp = () => {
-  const user = useAuth();
+  const { user } = useUser();
   const db = useFirestore();
   const { firebaseApp } = useFirebaseInstances();
   const { setTheme } = useTheme();
@@ -2981,7 +2981,7 @@ const handleBuildPlanWithAI = async () => {
     const sandSavesMade = relevantHoles.reduce((sum, h) => sum + (h.sandSavesMade || 0), 0);
     const threePuttsOrMore = relevantHoles.filter(h => h.putts >= 3).length;
     
-    const scoreToParValue = totalScore - totalPar;
+    const scoreToParValue = totalScore - totalParForCompleted;
     
     const drivingDistances = relevantHoles
         .filter(h => h.par > 3 && h.drivingDistance && h.drivingDistance > 0)
@@ -3379,7 +3379,6 @@ const handleBuildPlanWithAI = async () => {
                     <GolfLoadingAnimation />
                   </div>
                 )}
-
                  {preRoundAdvice && !isFetchingPreRoundAdvice && !preRoundAdviceError ? (
                   <div className="mt-4 p-6 rounded-xl text-base text-left bg-custom-ai-text-bg border-2 border-primary shadow-md">
                     <h4 className="font-semibold mb-2 flex items-center text-foreground text-lg"><FileQuestion size={20} className="mr-2 text-primary"/>Pre-round Focus:</h4>
@@ -3451,7 +3450,6 @@ const handleBuildPlanWithAI = async () => {
                                       <Cell key={`cell-${index}`} fill={entry.fill} />
                                   ))}
                               </Pie>
-                          </PieChart>
                       </ResponsiveContainer>
                   </div>
                   <p className={cn("text-xl font-semibold text-foreground -mt-2 transition-colors", isPracticeComplete && "text-success")}>
@@ -5788,14 +5786,14 @@ const handleBuildPlanWithAI = async () => {
 
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  if (!isMounted || loading) {
+  if (!isMounted || isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="animate-spin h-12 w-12 text-primary" />
@@ -5812,102 +5810,4 @@ export default function HomePage() {
 
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
