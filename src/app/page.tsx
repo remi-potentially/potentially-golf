@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React from 'react';
@@ -3432,25 +3431,26 @@ const handleBuildPlanWithAI = async () => {
                <div className="p-4 mt-0 mb-6 rounded-lg shadow bg-card border border-primary text-center">
                   <h3 className="font-bold text-lg flex items-center justify-center text-foreground"><Goal size={20} className="mr-2 text-foreground"/> Practice Progress</h3>
                   <div className="relative mx-auto my-4" style={{ width: 150, height: 150 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                              <Pie
-                                  data={donutData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={50}
-                                  outerRadius={70}
-                                  startAngle={90}
-                                  endAngle={-270}
-                                  paddingAngle={0}
-                                  dataKey="value"
-                                  stroke="none"
-                              >
-                                  {donutData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                                  ))}
-                              </Pie>
-                      </ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={donutData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={70}
+                                startAngle={90}
+                                endAngle={-270}
+                                paddingAngle={0}
+                                dataKey="value"
+                                stroke="none"
+                            >
+                                {donutData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                            </Pie>
+                        </PieChart>
+                    </ResponsiveContainer>
                   </div>
                   <p className={cn("text-xl font-semibold text-foreground -mt-2 transition-colors", isPracticeComplete && "text-success")}>
                       {practiceProgressPercentage.toFixed(0)}%
