@@ -711,7 +711,7 @@ const MainApp = () => {
   const [planSummary, setPlanSummary] = React.useState<string | null>(null);
 
   const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
-  const [trendAnalysis, setTrendAnalysis] = React.useState<{ [key: string]: string }>({});
+  const [trendAnalysis, setTrendAnalysis] = React.useState<{ [key: string]: string | null }>({});
   const [isFetchingTrend, setIsFetchingTrend] = React.useState<string | null>(null);
 
 
@@ -1191,6 +1191,42 @@ const MainApp = () => {
       preRound: !lastPreRoundAdviceDate || latestActivityDate > new Date(lastPreRoundAdviceDate).getTime(),
     };
   }, [journalEntries, rounds]);
+
+  const chartData = React.useMemo(() => {
+    return rounds
+        .filter(round => round.roundType !== 'Indoor')
+        .map(round => ({
+            date: round.roundDate,
+            roundDateShort: format(new Date(round.roundDate), 'MMM d'),
+            handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+            scoreToPar: parseScoreToPar(round.scoreToPar),
+            fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+            greensInRegulation: parseFloat(round.greensInRegulation),
+            puttsTotal: parseInt(round.puttsTotal),
+            isNineHole: round.holesPlayed === '9',
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [rounds]);
+  
+  const fetchAllTrendAnalyses = React.useCallback(async (currentChartData: any[]) => {
+    if (currentChartData.length < 2) return;
+
+    const statsToAnalyze = ['handicap', 'fairwaysInRegulation', 'greensInRegulation', 'puttsTotal', 'scoreToPar'];
+    const analyses: { [key: string]: string | null } = {};
+    const promises = statsToAnalyze.map(async (statKey) => {
+        try {
+            const statHistory = currentChartData.map(d => ({ date: d.date, value: d[statKey] }));
+            const result = await getTrendAnalysis({ statName: statKey, statHistory });
+            analyses[statKey] = result.analysis;
+        } catch (error) {
+            console.error(`Error fetching trend analysis for ${statKey}:`, error);
+            analyses[statKey] = "Sorry, the coach couldn't provide an analysis at this time.";
+        }
+    });
+
+    await Promise.all(promises);
+    setTrendAnalysis(analyses);
+  }, []);
   
   React.useEffect(() => {
     if (!user || !db) {
@@ -1291,6 +1327,21 @@ const MainApp = () => {
                 localStorage.removeItem(PENDING_COACH_CHECK_IN_KEY); // Clear it after displaying
             }
 
+            // Pre-fetch trend analysis after data is loaded
+            const initialChartData = roundsData
+              .filter(round => round.roundType !== 'Indoor')
+              .map(round => ({
+                  date: round.roundDate,
+                  handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+                  scoreToPar: parseScoreToPar(round.scoreToPar),
+                  fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+                  greensInRegulation: parseFloat(round.greensInRegulation),
+                  puttsTotal: parseInt(round.puttsTotal),
+              }))
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            
+            fetchAllTrendAnalyses(initialChartData);
+
 
         } catch (error) {
             console.error("Error loading user data:", error);
@@ -1301,7 +1352,7 @@ const MainApp = () => {
     };
 
     loadUserData();
-}, [user, db, toast]);
+}, [user, db, toast, fetchAllTrendAnalyses]);
 
 
 const handleSetDrillCompletionTarget = async (newTarget: number) => {
@@ -1835,6 +1886,20 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
         setClarifyingAnswers('');
         
         await triggerFetchRoundAnalysis(newRoundWithId);
+
+        const newChartData = updatedRounds
+          .filter(round => round.roundType !== 'Indoor')
+          .map(round => ({
+              date: round.roundDate,
+              handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+              scoreToPar: parseScoreToPar(round.scoreToPar),
+              fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+              greensInRegulation: parseFloat(round.greensInRegulation),
+              puttsTotal: parseInt(round.puttsTotal),
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        await fetchAllTrendAnalyses(newChartData);
+        
         setCurrentPage('dashboard');
         toast({ title: "Success", description: "Round logged successfully!" });
 
@@ -1908,6 +1973,19 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
         
         setIdentifiedAreasOfPotential(analyzeRoundDataForDrillPrescription(updatedRoundWithObservations));
         await triggerFetchRoundAnalysis(updatedRoundWithObservations);
+        
+        const newChartData = updatedRounds
+          .filter(round => round.roundType !== 'Indoor')
+          .map(round => ({
+              date: round.roundDate,
+              handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+              scoreToPar: parseScoreToPar(round.scoreToPar),
+              fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+              greensInRegulation: parseFloat(round.greensInRegulation),
+              puttsTotal: parseInt(round.puttsTotal),
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        await fetchAllTrendAnalyses(newChartData);
 
         setEditingRoundId(null);
         setCurrentRound(initialRoundState);
@@ -2697,22 +2775,6 @@ const handleBuildPlanWithAI = async () => {
 
 
 
-  const chartData = React.useMemo(() => {
-    return rounds
-        .filter(round => round.roundType !== 'Indoor')
-        .map(round => ({
-            date: round.roundDate,
-            roundDateShort: format(new Date(round.roundDate), 'MMM d'),
-            handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
-            scoreToPar: parseScoreToPar(round.scoreToPar),
-            fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
-            greensInRegulation: parseFloat(round.greensInRegulation),
-            puttsTotal: parseInt(round.puttsTotal),
-            isNineHole: round.holesPlayed === '9',
-        }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [rounds]);
-
   const scoreToParFormatter = (value: number) => {
     if (value === null || value === undefined) return '';
     if (value > 0) return `+${value}`;
@@ -3209,21 +3271,9 @@ const handleBuildPlanWithAI = async () => {
     }
   };
 
-  const openChart = async (statKey: string) => {
+  const openChart = (statKey: string) => {
     setExpandedChart(statKey);
-    if (!trendAnalysis[statKey] && !isFetchingTrend) {
-      setIsFetchingTrend(statKey);
-      try {
-        const statHistory = chartData.map(d => ({ date: d.date, value: d[statKey] }));
-        const result = await getTrendAnalysis({ statName: statKey, statHistory });
-        setTrendAnalysis(prev => ({ ...prev, [statKey]: result.analysis }));
-      } catch (error) {
-        console.error(`Error fetching trend analysis for ${statKey}:`, error);
-        setTrendAnalysis(prev => ({ ...prev, [statKey]: "Sorry, the coach couldn't provide an analysis at this time." }));
-      } finally {
-        setIsFetchingTrend(null);
-      }
-    }
+    // No longer fetching on open, data should be pre-loaded
   };
 
 
@@ -3638,10 +3688,10 @@ const handleBuildPlanWithAI = async () => {
                       </div>
                       <div className="p-4 rounded-lg bg-custom-ai-text-bg border border-primary">
                         <h5 className="font-semibold mb-2 flex items-center"><Sparkles size={16} className="mr-2 text-primary"/>Coach's Insight</h5>
-                        {isFetchingTrend === expandedChart ? (
+                        {!trendAnalysis[expandedChart] ? (
                            <GolfLoadingAnimation />
                         ) : (
-                          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{trendAnalysis[expandedChart] || "No analysis available."}</p>
+                          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{trendAnalysis[expandedChart]}</p>
                         )}
                       </div>
                     </>
@@ -5865,3 +5915,4 @@ export default function HomePage() {
 }
 
     
+
