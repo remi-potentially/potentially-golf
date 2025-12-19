@@ -157,7 +157,7 @@ export default function LoginPage() {
         <div className="text-center mb-2">
           <h1 className="font-pacifico text-4xl text-foreground">Potentially</h1>
         </div>
-        <h2 className="text-2xl font-bold mb-6 text-center font-headline text-foreground">
+        <h2 className="text-2xl font-bold mb-6 text-center text-foreground">
           {isSignUp ? "Create an Account" : "Sign In"}
         </h2>
         <form onSubmit={handleAuthAction}>
@@ -189,7 +189,7 @@ export default function LoginPage() {
           )}
           <Button
             type="submit"
-            className="w-full mt-4 hover:bg-black hover:text-primary"
+            className="w-full mt-4 bg-foreground text-background hover:bg-primary hover:text-primary-foreground"
             disabled={loading}
           >
             {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? "Create Account" : "Sign In")}
@@ -198,7 +198,7 @@ export default function LoginPage() {
          <Button
             variant="link"
             onClick={toggleAuthMode}
-            className="w-full mt-4 text-sm text-foreground"
+            className="w-full mt-4 text-sm text-muted-foreground"
         >
             {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
         </Button>
