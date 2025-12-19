@@ -92,6 +92,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getTrendAnalysis } from '@/ai/flows/ai-trend-analysis';
 
 const HoleMap = dynamic(() => import('@/components/custom/HoleMap'), {
   ssr: false,
@@ -708,6 +709,10 @@ const MainApp = () => {
   const [notificationStatus, setNotificationStatus] = React.useState<'default' | 'loading' | 'enabled' | 'denied'>('default');
   const [isBuildingPlan, setIsBuildingPlan] = React.useState(false);
   const [planSummary, setPlanSummary] = React.useState<string | null>(null);
+
+  const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
+  const [trendAnalysis, setTrendAnalysis] = React.useState<{ [key: string]: string }>({});
+  const [isFetchingTrend, setIsFetchingTrend] = React.useState<string | null>(null);
 
 
   const { toast } = useToast();
@@ -3204,6 +3209,23 @@ const handleBuildPlanWithAI = async () => {
     }
   };
 
+  const openChart = async (statKey: string) => {
+    setExpandedChart(statKey);
+    if (!trendAnalysis[statKey] && !isFetchingTrend) {
+      setIsFetchingTrend(statKey);
+      try {
+        const statHistory = chartData.map(d => ({ date: d.date, value: d[statKey] }));
+        const result = await getTrendAnalysis({ statName: statKey, statHistory });
+        setTrendAnalysis(prev => ({ ...prev, [statKey]: result.analysis }));
+      } catch (error) {
+        console.error(`Error fetching trend analysis for ${statKey}:`, error);
+        setTrendAnalysis(prev => ({ ...prev, [statKey]: "Sorry, the coach couldn't provide an analysis at this time." }));
+      } finally {
+        setIsFetchingTrend(null);
+      }
+    }
+  };
+
 
   const drillDetails = drillToAssign ? drills.find(d => d.id === drillToAssign.drillId) : null;
 
@@ -3546,55 +3568,90 @@ const handleBuildPlanWithAI = async () => {
               </div>
 
               <h3 className="text-xl font-semibold mb-3 mt-8 text-center font-headline text-foreground">Performance Trends</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <CustomCard className="md:col-span-2">
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Handicap Trend</h4>
-                      {handicapChange && (
-                        <p className={cn(
-                            "text-4xl font-bold",
-                            handicapChange.startsWith('-') ? "text-success" : 
-                            handicapChange.startsWith('+') ? "text-destructive" : ""
-                          )}>{handicapChange}</p>
-                      )}
-                    </div>
-                    <StatsChart data={chartData} originalData={chartData} dataKey="handicap" name="Handicap" color="hsl(var(--success))" showAverageLine={false} yAxisLabel="Handicap" />
-                </CustomCard>
-                <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Fairways in Regulation (%)</h4>
-                      {firAvg && <p className="text-xs text-muted-foreground">Your Avg: {firAvg}</p>}
-                    </div>
-                    <StatsChart data={chartData} originalData={chartData} dataKey="fairwaysInRegulation" name="Fairways Hit" unit="%" color="hsl(var(--success))" showAverageLine={true} yAxisLabel="FIR %" />
-                    {mainStatBenchmarks.fir && <p className="text-xs text-center mt-2 text-muted-foreground">Avg for {mainStatBenchmarks.handicap} Hcp: {mainStatBenchmarks.fir}%</p>}
-                </CustomCard>
-                <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Greens in Regulation (%)</h4>
-                      {girAvg && <p className="text-xs text-muted-foreground">Your Avg: {girAvg}</p>}
-                    </div>
-                    <StatsChart data={chartData} originalData={chartData} dataKey="greensInRegulation" name="GIR" unit="%" color="hsl(var(--success))" showAverageLine={true} yAxisLabel="GIR %" />
-                    {mainStatBenchmarks.gir && <p className="text-xs text-center mt-2 text-muted-foreground">Avg for {mainStatBenchmarks.handicap} Hcp: {mainStatBenchmarks.gir.toFixed(1)}%</p>}
-                </CustomCard>
-                 <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Putts Per Round (18 holes)</h4>
-                      {puttsAvg && <p className="text-xs text-muted-foreground">Your Avg: {puttsAvg}</p>}
-                    </div>
-                    <StatsChart data={puttsChartData} originalData={chartData} dataKey="puttsTotal" name="Putts" color="hsl(var(--success))" showAverageLine={true} yAxisLabel="Putts" />
-                    {mainStatBenchmarks.puttsPerRound && <p className="text-xs text-center mt-2 text-muted-foreground">Avg for {mainStatBenchmarks.handicap} Hcp: {mainStatBenchmarks.puttsPerRound.toFixed(1)}</p>}
-                </CustomCard>
-                <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Score to Par (18 holes)</h4>
-                      {scoreToParAvg && <p className="text-xs text-muted-foreground">Your Avg: {scoreToParAvg}</p>}
-                    </div>
-                    <StatsChart data={scoreToParChartData} originalData={chartData} dataKey="scoreToPar" name="Score to Par" color="hsl(var(--success))" yAxisDomain={['dataMin - 1', 'dataMax + 1']} tickFormatter={scoreToParFormatter} showAverageLine={true} yAxisLabel="Score" />
-                </CustomCard>
-                <CustomCard className="md:col-span-2">
-                  <div className="text-center mb-4">
-                      <h4 className="text-md font-semibold text-foreground">Scoring Average by Par</h4>
-                  </div>
+               <div className="grid grid-cols-2 gap-4 mb-6">
+                
+                <div onClick={() => openChart('handicap')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">Handicap Trend</h4>
+                  {handicapChange && <p className={cn("text-2xl font-bold", handicapChange.startsWith('-') ? "text-success" : handicapChange.startsWith('+') ? "text-destructive" : "")}>{handicapChange}</p>}
+                </div>
+
+                <div onClick={() => openChart('fairwaysInRegulation')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">FIR %</h4>
+                  {firAvg && <p className="text-2xl font-bold">{firAvg}</p>}
+                  {mainStatBenchmarks.fir && <p className="text-xs text-muted-foreground">Target: {mainStatBenchmarks.fir}%</p>}
+                </div>
+
+                <div onClick={() => openChart('greensInRegulation')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">GIR %</h4>
+                  {girAvg && <p className="text-2xl font-bold">{girAvg}</p>}
+                  {mainStatBenchmarks.gir && <p className="text-xs text-muted-foreground">Target: {mainStatBenchmarks.gir.toFixed(1)}%</p>}
+                </div>
+
+                <div onClick={() => openChart('puttsTotal')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">Putts / Rnd</h4>
+                  {puttsAvg && <p className="text-2xl font-bold">{puttsAvg}</p>}
+                  {mainStatBenchmarks.puttsPerRound && <p className="text-xs text-muted-foreground">Target: {mainStatBenchmarks.puttsPerRound.toFixed(1)}</p>}
+                </div>
+
+                <div onClick={() => openChart('scoreToPar')} className="col-span-2 p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">Score to Par Avg (18 holes)</h4>
+                  {scoreToParAvg && <p className="text-2xl font-bold">{scoreToParAvg}</p>}
+                </div>
+              </div>
+
+              <Dialog open={!!expandedChart} onOpenChange={() => setExpandedChart(null)}>
+                <DialogContent className="max-w-3xl">
+                  {expandedChart && (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle className="text-center text-lg">
+                          {
+                            {
+                              'handicap': 'Handicap Trend',
+                              'fairwaysInRegulation': 'Fairways in Regulation (%)',
+                              'greensInRegulation': 'Greens in Regulation (%)',
+                              'puttsTotal': 'Putts Per Round (18 holes)',
+                              'scoreToPar': 'Score to Par (18 holes)',
+                            }[expandedChart]
+                          }
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="my-4">
+                        <StatsChart
+                          data={expandedChart === 'scoreToPar' ? scoreToParChartData : expandedChart === 'puttsTotal' ? puttsChartData : chartData}
+                          originalData={chartData}
+                          dataKey={expandedChart}
+                          name={{
+                            'handicap': 'Handicap',
+                            'fairwaysInRegulation': 'Fairways Hit',
+                            'greensInRegulation': 'GIR',
+                            'puttsTotal': 'Putts',
+                            'scoreToPar': 'Score to Par',
+                          }[expandedChart]!}
+                          unit={expandedChart === 'fairwaysInRegulation' || expandedChart === 'greensInRegulation' ? '%' : ''}
+                          color="hsl(var(--success))"
+                          yAxisDomain={expandedChart === 'scoreToPar' ? ['dataMin - 1', 'dataMax + 1'] : undefined}
+                          tickFormatter={expandedChart === 'scoreToPar' ? scoreToParFormatter : undefined}
+                          showAverageLine={true}
+                          yAxisLabel={expandedChart}
+                        />
+                      </div>
+                      <div className="p-4 rounded-lg bg-custom-ai-text-bg border border-primary">
+                        <h5 className="font-semibold mb-2 flex items-center"><Sparkles size={16} className="mr-2 text-primary"/>Coach's Insight</h5>
+                        {isFetchingTrend === expandedChart ? (
+                           <GolfLoadingAnimation />
+                        ) : (
+                          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{trendAnalysis[expandedChart] || "No analysis available."}</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+
+              <h3 className="text-xl font-semibold mb-3 mt-8 text-center font-headline text-foreground">Scoring Averages</h3>
+              <CustomCard className="md:col-span-2">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
                         <p className="font-bold text-lg">Par 3s</p>
@@ -3613,7 +3670,6 @@ const handleBuildPlanWithAI = async () => {
                     </div>
                   </div>
                 </CustomCard>
-              </div>
             </>
           )}
         </CustomCard>
