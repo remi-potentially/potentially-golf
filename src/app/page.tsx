@@ -86,7 +86,7 @@ import { buildPracticePlan } from '@/ai/flows/agent-coach-planning';
 import { goalManagerAgent } from '@/ai/flows/goal-manager-agent';
 
 
-import { useUser, useFirestore, useFirebaseInstances, useAuth } from '@/firebase';
+import { useUser, useFirestore, useFirebaseApp, useAuth } from '@/firebase';
 import LoginPage from './login/page';
 import { getAuth, signOut } from "firebase/auth";
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
@@ -691,7 +691,7 @@ const getRationaleForTag = (tag: string): string => {
 const MainApp = () => {
   const { user } = useUser();
   const db = useFirestore();
-  const { firebaseApp } = useFirebaseInstances();
+  const firebaseApp = useFirebaseApp();
   const { setTheme } = useTheme();
   
   const [_currentPage, _setCurrentPage] = React.useState<CurrentPage>('dashboard');
@@ -5807,3 +5807,5 @@ export default function HomePage() {
 
   return <MainApp />;
 }
+
+    
