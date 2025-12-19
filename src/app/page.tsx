@@ -3623,6 +3623,7 @@ const handleBuildPlanWithAI = async () => {
                 <div onClick={() => openChart('handicap')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
                   <h4 className="text-md font-semibold text-foreground">Handicap Trend</h4>
                   {handicapChange && <p className={cn("text-2xl font-bold", handicapChange.startsWith('-') ? "text-success" : handicapChange.startsWith('+') ? "text-destructive" : "")}>{handicapChange}</p>}
+                  {userProfile?.targetHandicap && <p className="text-xs text-muted-foreground mt-1">Target: {userProfile.targetHandicap}</p>}
                 </div>
 
                 <div onClick={() => openChart('fairwaysInRegulation')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
@@ -5915,4 +5916,5 @@ export default function HomePage() {
 }
 
     
+
 
