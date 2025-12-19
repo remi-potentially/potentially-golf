@@ -1,5 +1,7 @@
+
 import type { FirebaseOptions } from "firebase/app";
 
+// Hardcoded production Firebase configuration to ensure consistency.
 export const firebaseConfig: FirebaseOptions = {
   apiKey: "AIzaSyCbQkSXglYsMgcdDIPmkW1IX6g5OAXQ524",
   authDomain: "fairwayforward.firebaseapp.com",

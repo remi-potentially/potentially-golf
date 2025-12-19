@@ -3337,7 +3337,7 @@ const handleBuildPlanWithAI = async () => {
                     </span>
                 </Button>
                 {isFetchingCoachCheckIn && (
-                  <div className="mt-4">
+                  <div className="my-4">
                     <GolfLoadingAnimation />
                   </div>
                 )}
@@ -3432,24 +3432,24 @@ const handleBuildPlanWithAI = async () => {
                   <h3 className="font-bold text-lg flex items-center justify-center text-foreground"><Goal size={20} className="mr-2 text-foreground"/> Practice Progress</h3>
                   <div className="relative mx-auto my-4" style={{ width: 150, height: 150 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={donutData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={50}
-                                outerRadius={70}
-                                startAngle={90}
-                                endAngle={-270}
-                                paddingAngle={0}
-                                dataKey="value"
-                                stroke="none"
-                            >
-                                {donutData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                            </Pie>
-                        </PieChart>
+                      <PieChart>
+                        <Pie
+                          data={donutData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          startAngle={90}
+                          endAngle={-270}
+                          paddingAngle={0}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {donutData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                      </PieChart>
                     </ResponsiveContainer>
                   </div>
                   <p className={cn("text-xl font-semibold text-foreground -mt-2 transition-colors", isPracticeComplete && "text-success")}>
@@ -4742,7 +4742,7 @@ const handleBuildPlanWithAI = async () => {
                             activeDrillReflection={activeDrillReflection}
                             drillClarifyingQuestions={drillClarifyingQuestions}
                             isFetchingDrillQuestions={isFetchingDrillQuestions}
-                            onFetchDrillClarifyingQuestions={handleFetchDrillClarifyingQuestions}
+                            onFetchDrillQuestions={handleFetchDrillClarifyingQuestions}
                             drillClarifyingAnswers={drillClarifyingAnswers}
                             onUpdateDrillClarifyingAnswers={(index, answers) => setDrillClarifyingAnswers(prev => ({...prev, [index]: answers}))}
                             aiDrillModifications={aiDrillModifications}
