@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from 'react';
@@ -86,7 +87,7 @@ import { buildPracticePlan } from '@/ai/flows/agent-coach-planning';
 import { goalManagerAgent } from '@/ai/flows/goal-manager-agent';
 
 
-import { useUser, useFirestore, useFirebaseApp, useAuth } from '@/firebase';
+import { useUser, useFirestore, useFirebaseApp, useAuth, FirestorePermissionError, errorEmitter } from '@/firebase';
 import LoginPage from './login/page';
 import { getAuth, signOut } from "firebase/auth";
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
@@ -1818,25 +1819,24 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
     delete (roundDataForFirestore as Partial<RoundStats>).id;
     delete (roundDataForFirestore as Partial<RoundStats>).holeScores;
 
-    try {
-        const batch = writeBatch(db);
-        const userRoundsCol = collection(db, 'users', user.uid, 'rounds');
-        const roundDocRef = doc(userRoundsCol);
-        batch.set(roundDocRef, {
-            ...roundDataForFirestore,
-            createdAt: Timestamp.now()
-        });
+    const userRoundsCol = collection(db, 'users', user.uid, 'rounds');
+    const roundDocRef = doc(userRoundsCol);
 
-        if (currentRound.holeScores && currentRound.holeScores.length > 0) {
-            const holesColRef = collection(roundDocRef, 'holeScores');
-            currentRound.holeScores.forEach((holeScore, index) => {
-                const holeDocRef = doc(holesColRef, `hole_${index + 1}`);
-                batch.set(holeDocRef, holeScore);
-            });
-        }
-        
-        await batch.commit();
-        
+    const batch = writeBatch(db);
+    batch.set(roundDocRef, {
+        ...roundDataForFirestore,
+        createdAt: Timestamp.now()
+    });
+
+    if (currentRound.holeScores && currentRound.holeScores.length > 0) {
+        const holesColRef = collection(roundDocRef, 'holeScores');
+        currentRound.holeScores.forEach((holeScore, index) => {
+            const holeDocRef = doc(holesColRef, `hole_${index + 1}`);
+            batch.set(holeDocRef, holeScore);
+        });
+    }
+
+    batch.commit().then(async () => {
         const newRoundWithId: RoundStats = { ...currentRound, id: roundDocRef.id, generalObservations: finalObservations };
         const updatedRounds = [newRoundWithId, ...rounds].sort((a, b) => new Date(b.roundDate).getTime() - new Date(a.roundDate).getTime());
         setRounds(updatedRounds);
@@ -1907,12 +1907,18 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
             setOnboardingStep(1); 
         }
 
-    } catch (error) {
-        console.error("Failed to add round:", error);
-        toast({ title: "Save Error", description: "Could not save your round data.", variant: "destructive" });
-    } finally {
         setIsSubmittingRound(false);
-    }
+    }).catch(error => {
+        errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+                path: roundDocRef.path,
+                operation: 'create',
+                requestResourceData: roundDataForFirestore,
+            })
+        );
+        setIsSubmittingRound(false);
+    });
   };
 
   const handleUpdateRound = async () => {
@@ -5914,3 +5920,5 @@ export default function HomePage() {
 
   return <MainApp />;
 }
+
+    
