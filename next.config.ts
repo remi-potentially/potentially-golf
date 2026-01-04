@@ -1,14 +1,5 @@
 
 import type {NextConfig} from 'next';
-import withSerwistInit from "@serwist/next";
-
-const isDev = process.env.NODE_ENV === "development";
-
-const serwist = withSerwistInit({
-  swSrc: "src/app/sw.ts",
-  swDest: "public/sw.js",
-  disable: isDev,
-});
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -43,4 +34,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default serwist(nextConfig);
+export default nextConfig;
