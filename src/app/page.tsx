@@ -3882,7 +3882,7 @@ const handleBuildPlanWithAI = async () => {
                                     value={courseSearchTerm}
                                     onChange={(e) => {
                                       setCourseSearchTerm(e.target.value);
-                                      setSelectedCourse(null);
+                                      setCurrentRound(prev => ({...prev, courseName: e.target.value}));
                                     }}
                                     autoComplete="off"
                                 />
@@ -3917,7 +3917,7 @@ const handleBuildPlanWithAI = async () => {
                             <InputField label="Current Handicap" name="currentHandicap" value={currentRound.currentHandicap} onChange={handleInputChange} type="text" placeholder="e.g., 18.3 or +2" inputMode="decimal" />
                             <InputField label="Target Handicap" name="targetHandicap" value={currentRound.targetHandicap} onChange={handleInputChange} type="text" placeholder="e.g., 15 (whole numbers)" inputMode="numeric" />
                             
-                            <Button type="submit" variant="success" className="w-full mt-6" disabled={isCheckingForScorecard || !currentRound.courseName || !currentRound.teePlayedOff || !selectedCourse}>
+                            <Button type="submit" variant="success" className="w-full mt-6" disabled={isCheckingForScorecard || !currentRound.courseName || !currentRound.teePlayedOff}>
                                 {isCheckingForScorecard ? <Loader2 className="animate-spin" /> : "Start Round"}
                             </Button>
                         </form>
@@ -5916,5 +5916,6 @@ export default function HomePage() {
 }
 
     
+
 
 
