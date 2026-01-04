@@ -20,7 +20,7 @@ export default {
       fontFamily: {
         body: ['Alegreya', 'serif'],
         'body-sans': ['"Alegreya Sans"', 'sans-serif'],
-        headline: ['Belleza', 'sans-serif'], 
+        headline: ['Alegreya', 'serif'], 
         code: ['monospace'],
         pacifico: ['Pacifico', 'cursive'],
       },

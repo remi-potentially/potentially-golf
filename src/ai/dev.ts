@@ -1,3 +1,4 @@
+
 import { config } from 'dotenv';
 config();
 
@@ -10,3 +11,4 @@ import '@/ai/flows/ai-pre-round-focus.ts';
 import '@/ai/flows/orchestrator.ts';
 import '@/ai/flows/agent-coach-planning.ts';
 import '@/ai/flows/goal-manager-agent.ts';
+import '@/ai/flows/ai-trend-analysis.ts';

@@ -18,6 +18,7 @@ import { getClarifyingQuestions } from './ai-clarifying-questions';
 import { getDrillClarifyingQuestions } from './ai-drill-reflection';
 import { getCoachCheckIn } from './ai-coach-check-in';
 import { getPreRoundFocus } from './ai-pre-round-focus';
+import { getTrendAnalysis } from './ai-trend-analysis';
 
 // Define the types of tasks the orchestrator can handle
 const TaskTypeSchema = z.enum([
@@ -28,6 +29,7 @@ const TaskTypeSchema = z.enum([
   'getClarifyingQuestions',
   'getDrillClarifyingQuestions',
   'getCoachCheckIn',
+  'getTrendAnalysis',
 ]);
 
 const OrchestratorInputSchema = z.object({
@@ -111,6 +113,12 @@ const orchestratorFlow = ai.defineFlow(
          agentResponse = await getPreRoundFocus(input);
          agentName = 'PreRoundBriefingAgent';
          break;
+
+      case 'getTrendAnalysis':
+        console.log('Orchestrator: Routing to Trend Analysis Agent...');
+        agentResponse = await getTrendAnalysis(input);
+        agentName = 'TrendAnalysisAgent';
+        break;
 
       default:
         console.error(`Orchestrator: No route found for task "${task}"`);

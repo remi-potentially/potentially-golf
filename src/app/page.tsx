@@ -87,12 +87,13 @@ import { buildPracticePlan } from '@/ai/flows/agent-coach-planning';
 import { goalManagerAgent } from '@/ai/flows/goal-manager-agent';
 
 
-import { useAuth, useFirestore, useFirebaseInstances } from '@/firebase';
+import { useUser, useFirestore, useFirebaseApp, useAuth, FirestorePermissionError, errorEmitter } from '@/firebase';
 import LoginPage from './login/page';
 import { getAuth, signOut } from "firebase/auth";
 import { collection, doc, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, query, orderBy, Timestamp, increment, where, FirestoreError, arrayUnion } from 'firebase/firestore';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getTrendAnalysis } from '@/ai/flows/ai-trend-analysis';
 
 const HoleMap = dynamic(() => import('@/components/custom/HoleMap'), {
   ssr: false,
@@ -690,9 +691,9 @@ const getRationaleForTag = (tag: string): string => {
 
 
 const MainApp = () => {
-  const user = useAuth();
+  const { user } = useUser();
   const db = useFirestore();
-  const { firebaseApp } = useFirebaseInstances();
+  const firebaseApp = useFirebaseApp();
   const { setTheme } = useTheme();
   
   const [_currentPage, _setCurrentPage] = React.useState<CurrentPage>('dashboard');
@@ -709,6 +710,10 @@ const MainApp = () => {
   const [notificationStatus, setNotificationStatus] = React.useState<'default' | 'loading' | 'enabled' | 'denied'>('default');
   const [isBuildingPlan, setIsBuildingPlan] = React.useState(false);
   const [planSummary, setPlanSummary] = React.useState<string | null>(null);
+
+  const [expandedChart, setExpandedChart] = React.useState<string | null>(null);
+  const [trendAnalysis, setTrendAnalysis] = React.useState<{ [key: string]: string | null }>({});
+  const [isFetchingTrend, setIsFetchingTrend] = React.useState<string | null>(null);
 
 
   const { toast } = useToast();
@@ -1187,6 +1192,42 @@ const MainApp = () => {
       preRound: !lastPreRoundAdviceDate || latestActivityDate > new Date(lastPreRoundAdviceDate).getTime(),
     };
   }, [journalEntries, rounds]);
+
+  const chartData = React.useMemo(() => {
+    return rounds
+        .filter(round => round.roundType !== 'Indoor')
+        .map(round => ({
+            date: round.roundDate,
+            roundDateShort: format(new Date(round.roundDate), 'MMM d'),
+            handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+            scoreToPar: parseScoreToPar(round.scoreToPar),
+            fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+            greensInRegulation: parseFloat(round.greensInRegulation),
+            puttsTotal: parseInt(round.puttsTotal),
+            isNineHole: round.holesPlayed === '9',
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [rounds]);
+  
+  const fetchAllTrendAnalyses = React.useCallback(async (currentChartData: any[]) => {
+    if (currentChartData.length < 2) return;
+
+    const statsToAnalyze = ['handicap', 'fairwaysInRegulation', 'greensInRegulation', 'puttsTotal', 'scoreToPar'];
+    const analyses: { [key: string]: string | null } = {};
+    const promises = statsToAnalyze.map(async (statKey) => {
+        try {
+            const statHistory = currentChartData.map(d => ({ date: d.date, value: d[statKey] }));
+            const result = await getTrendAnalysis({ statName: statKey, statHistory });
+            analyses[statKey] = result.analysis;
+        } catch (error) {
+            console.error(`Error fetching trend analysis for ${statKey}:`, error);
+            analyses[statKey] = "Sorry, the coach couldn't provide an analysis at this time.";
+        }
+    });
+
+    await Promise.all(promises);
+    setTrendAnalysis(analyses);
+  }, []);
   
   React.useEffect(() => {
     if (!user || !db) {
@@ -1287,6 +1328,21 @@ const MainApp = () => {
                 localStorage.removeItem(PENDING_COACH_CHECK_IN_KEY); // Clear it after displaying
             }
 
+            // Pre-fetch trend analysis after data is loaded
+            const initialChartData = roundsData
+              .filter(round => round.roundType !== 'Indoor')
+              .map(round => ({
+                  date: round.roundDate,
+                  handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+                  scoreToPar: parseScoreToPar(round.scoreToPar),
+                  fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+                  greensInRegulation: parseFloat(round.greensInRegulation),
+                  puttsTotal: parseInt(round.puttsTotal),
+              }))
+              .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            
+            fetchAllTrendAnalyses(initialChartData);
+
 
         } catch (error) {
             console.error("Error loading user data:", error);
@@ -1297,7 +1353,7 @@ const MainApp = () => {
     };
 
     loadUserData();
-}, [user, db, toast]);
+}, [user, db, toast, fetchAllTrendAnalyses]);
 
 
 const handleSetDrillCompletionTarget = async (newTarget: number) => {
@@ -1763,25 +1819,24 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
     delete (roundDataForFirestore as Partial<RoundStats>).id;
     delete (roundDataForFirestore as Partial<RoundStats>).holeScores;
 
-    try {
-        const batch = writeBatch(db);
-        const userRoundsCol = collection(db, 'users', user.uid, 'rounds');
-        const roundDocRef = doc(userRoundsCol);
-        batch.set(roundDocRef, {
-            ...roundDataForFirestore,
-            createdAt: Timestamp.now()
-        });
+    const userRoundsCol = collection(db, 'users', user.uid, 'rounds');
+    const roundDocRef = doc(userRoundsCol);
 
-        if (currentRound.holeScores && currentRound.holeScores.length > 0) {
-            const holesColRef = collection(roundDocRef, 'holeScores');
-            currentRound.holeScores.forEach((holeScore, index) => {
-                const holeDocRef = doc(holesColRef, `hole_${index + 1}`);
-                batch.set(holeDocRef, holeScore);
-            });
-        }
-        
-        await batch.commit();
-        
+    const batch = writeBatch(db);
+    batch.set(roundDocRef, {
+        ...roundDataForFirestore,
+        createdAt: Timestamp.now()
+    });
+
+    if (currentRound.holeScores && currentRound.holeScores.length > 0) {
+        const holesColRef = collection(roundDocRef, 'holeScores');
+        currentRound.holeScores.forEach((holeScore, index) => {
+            const holeDocRef = doc(holesColRef, `hole_${index + 1}`);
+            batch.set(holeDocRef, holeScore);
+        });
+    }
+
+    batch.commit().then(async () => {
         const newRoundWithId: RoundStats = { ...currentRound, id: roundDocRef.id, generalObservations: finalObservations };
         const updatedRounds = [newRoundWithId, ...rounds].sort((a, b) => new Date(b.roundDate).getTime() - new Date(a.roundDate).getTime());
         setRounds(updatedRounds);
@@ -1831,6 +1886,20 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
         setClarifyingAnswers('');
         
         await triggerFetchRoundAnalysis(newRoundWithId);
+
+        const newChartData = updatedRounds
+          .filter(round => round.roundType !== 'Indoor')
+          .map(round => ({
+              date: round.roundDate,
+              handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+              scoreToPar: parseScoreToPar(round.scoreToPar),
+              fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+              greensInRegulation: parseFloat(round.greensInRegulation),
+              puttsTotal: parseInt(round.puttsTotal),
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        await fetchAllTrendAnalyses(newChartData);
+        
         setCurrentPage('dashboard');
         toast({ title: "Success", description: "Round logged successfully!" });
 
@@ -1838,12 +1907,18 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
             setOnboardingStep(1); 
         }
 
-    } catch (error) {
-        console.error("Failed to add round:", error);
-        toast({ title: "Save Error", description: "Could not save your round data.", variant: "destructive" });
-    } finally {
         setIsSubmittingRound(false);
-    }
+    }).catch(error => {
+        errorEmitter.emit(
+            'permission-error',
+            new FirestorePermissionError({
+                path: roundDocRef.path,
+                operation: 'create',
+                requestResourceData: roundDataForFirestore,
+            })
+        );
+        setIsSubmittingRound(false);
+    });
   };
 
   const handleUpdateRound = async () => {
@@ -1904,6 +1979,19 @@ const handleSetDrillCompletionTarget = async (newTarget: number) => {
         
         setIdentifiedAreasOfPotential(analyzeRoundDataForDrillPrescription(updatedRoundWithObservations));
         await triggerFetchRoundAnalysis(updatedRoundWithObservations);
+        
+        const newChartData = updatedRounds
+          .filter(round => round.roundType !== 'Indoor')
+          .map(round => ({
+              date: round.roundDate,
+              handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
+              scoreToPar: parseScoreToPar(round.scoreToPar),
+              fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
+              greensInRegulation: parseFloat(round.greensInRegulation),
+              puttsTotal: parseInt(round.puttsTotal),
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        await fetchAllTrendAnalyses(newChartData);
 
         setEditingRoundId(null);
         setCurrentRound(initialRoundState);
@@ -2693,22 +2781,6 @@ const handleBuildPlanWithAI = async () => {
 
 
 
-  const chartData = React.useMemo(() => {
-    return rounds
-        .filter(round => round.roundType !== 'Indoor')
-        .map(round => ({
-            date: round.roundDate,
-            roundDateShort: format(new Date(round.roundDate), 'MMM d'),
-            handicap: parseFloat(String(round.currentHandicap).replace('+', '')),
-            scoreToPar: parseScoreToPar(round.scoreToPar),
-            fairwaysInRegulation: parseFloat(round.fairwaysInRegulation),
-            greensInRegulation: parseFloat(round.greensInRegulation),
-            puttsTotal: parseInt(round.puttsTotal),
-            isNineHole: round.holesPlayed === '9',
-        }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [rounds]);
-
   const scoreToParFormatter = (value: number) => {
     if (value === null || value === undefined) return '';
     if (value > 0) return `+${value}`;
@@ -3205,6 +3277,11 @@ const handleBuildPlanWithAI = async () => {
     }
   };
 
+  const openChart = (statKey: string) => {
+    setExpandedChart(statKey);
+    // No longer fetching on open, data should be pre-loaded
+  };
+
 
   const drillDetails = drillToAssign ? drills.find(d => d.id === drillToAssign.drillId) : null;
 
@@ -3338,7 +3415,7 @@ const handleBuildPlanWithAI = async () => {
                     </span>
                 </Button>
                 {isFetchingCoachCheckIn && (
-                  <div className="mt-4">
+                  <div className="my-4">
                     <GolfLoadingAnimation />
                   </div>
                 )}
@@ -3379,7 +3456,6 @@ const handleBuildPlanWithAI = async () => {
                     <GolfLoadingAnimation />
                   </div>
                 )}
-
                  {preRoundAdvice && !isFetchingPreRoundAdvice && !preRoundAdviceError ? (
                   <div className="mt-4 p-6 rounded-xl text-base text-left bg-custom-ai-text-bg border-2 border-primary shadow-md">
                     <h4 className="font-semibold mb-2 flex items-center text-foreground text-lg"><FileQuestion size={20} className="mr-2 text-primary"/>Pre-round Focus:</h4>
@@ -3433,26 +3509,26 @@ const handleBuildPlanWithAI = async () => {
                <div className="p-4 mt-0 mb-6 rounded-lg shadow bg-card border border-primary text-center">
                   <h3 className="font-bold text-lg flex items-center justify-center text-foreground"><Goal size={20} className="mr-2 text-foreground"/> Practice Progress</h3>
                   <div className="relative mx-auto my-4" style={{ width: 150, height: 150 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                              <Pie
-                                  data={donutData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={50}
-                                  outerRadius={70}
-                                  startAngle={90}
-                                  endAngle={-270}
-                                  paddingAngle={0}
-                                  dataKey="value"
-                                  stroke="none"
-                              >
-                                  {donutData.map((entry, index) => (
-                                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                                  ))}
-                              </Pie>
-                          </PieChart>
-                      </ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={donutData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={70}
+                          startAngle={90}
+                          endAngle={-270}
+                          paddingAngle={0}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {donutData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                   <p className={cn("text-xl font-semibold text-foreground -mt-2 transition-colors", isPracticeComplete && "text-success")}>
                       {practiceProgressPercentage.toFixed(0)}%
@@ -3548,55 +3624,91 @@ const handleBuildPlanWithAI = async () => {
               </div>
 
               <h3 className="text-xl font-semibold mb-3 mt-8 text-center font-headline text-foreground">Performance Trends</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <CustomCard className="md:col-span-2">
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Handicap Trend</h4>
-                      {handicapChange && (
-                        <p className={cn(
-                            "text-4xl font-bold",
-                            handicapChange.startsWith('-') ? "text-success" : 
-                            handicapChange.startsWith('+') ? "text-destructive" : ""
-                          )}>{handicapChange}</p>
-                      )}
-                    </div>
-                    <StatsChart data={chartData} originalData={chartData} dataKey="handicap" name="Handicap" color="hsl(var(--success))" showAverageLine={false} yAxisLabel="Handicap" />
-                </CustomCard>
-                <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Fairways in Regulation (%)</h4>
-                      {firAvg && <p className="text-xs text-muted-foreground">Your Avg: {firAvg}</p>}
-                    </div>
-                    <StatsChart data={chartData} originalData={chartData} dataKey="fairwaysInRegulation" name="Fairways Hit" unit="%" color="hsl(var(--success))" showAverageLine={true} yAxisLabel="FIR %" />
-                    {mainStatBenchmarks.fir && <p className="text-xs text-center mt-2 text-muted-foreground">Avg for {mainStatBenchmarks.handicap} Hcp: {mainStatBenchmarks.fir}%</p>}
-                </CustomCard>
-                <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Greens in Regulation (%)</h4>
-                      {girAvg && <p className="text-xs text-muted-foreground">Your Avg: {girAvg}</p>}
-                    </div>
-                    <StatsChart data={chartData} originalData={chartData} dataKey="greensInRegulation" name="GIR" unit="%" color="hsl(var(--success))" showAverageLine={true} yAxisLabel="GIR %" />
-                    {mainStatBenchmarks.gir && <p className="text-xs text-center mt-2 text-muted-foreground">Avg for {mainStatBenchmarks.handicap} Hcp: {mainStatBenchmarks.gir.toFixed(1)}%</p>}
-                </CustomCard>
-                 <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Putts Per Round (18 holes)</h4>
-                      {puttsAvg && <p className="text-xs text-muted-foreground">Your Avg: {puttsAvg}</p>}
-                    </div>
-                    <StatsChart data={puttsChartData} originalData={chartData} dataKey="puttsTotal" name="Putts" color="hsl(var(--success))" showAverageLine={true} yAxisLabel="Putts" />
-                    {mainStatBenchmarks.puttsPerRound && <p className="text-xs text-center mt-2 text-muted-foreground">Avg for {mainStatBenchmarks.handicap} Hcp: {mainStatBenchmarks.puttsPerRound.toFixed(1)}</p>}
-                </CustomCard>
-                <CustomCard>
-                    <div className="text-center mb-2">
-                      <h4 className="text-md font-semibold text-foreground">Score to Par (18 holes)</h4>
-                      {scoreToParAvg && <p className="text-xs text-muted-foreground">Your Avg: {scoreToParAvg}</p>}
-                    </div>
-                    <StatsChart data={scoreToParChartData} originalData={chartData} dataKey="scoreToPar" name="Score to Par" color="hsl(var(--success))" yAxisDomain={['dataMin - 1', 'dataMax + 1']} tickFormatter={scoreToParFormatter} showAverageLine={true} yAxisLabel="Score" />
-                </CustomCard>
-                <CustomCard className="md:col-span-2">
-                  <div className="text-center mb-4">
-                      <h4 className="text-md font-semibold text-foreground">Scoring Average by Par</h4>
-                  </div>
+               <div className="grid grid-cols-2 gap-4 mb-6">
+                
+                <div onClick={() => openChart('handicap')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">Handicap Trend</h4>
+                  {handicapChange && <p className={cn("text-2xl font-bold", handicapChange.startsWith('-') ? "text-success" : handicapChange.startsWith('+') ? "text-destructive" : "")}>{handicapChange}</p>}
+                  {userProfile?.targetHandicap && <p className="text-xs text-muted-foreground mt-1">Target: {userProfile.targetHandicap}</p>}
+                </div>
+
+                <div onClick={() => openChart('fairwaysInRegulation')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">FIR %</h4>
+                  {firAvg && <p className="text-2xl font-bold">{firAvg}</p>}
+                  {mainStatBenchmarks.fir && <p className="text-xs text-muted-foreground">Target: {mainStatBenchmarks.fir}%</p>}
+                </div>
+
+                <div onClick={() => openChart('greensInRegulation')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">GIR %</h4>
+                  {girAvg && <p className="text-2xl font-bold">{girAvg}</p>}
+                  {mainStatBenchmarks.gir && <p className="text-xs text-muted-foreground">Target: {mainStatBenchmarks.gir.toFixed(1)}%</p>}
+                </div>
+
+                <div onClick={() => openChart('puttsTotal')} className="p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">Putts / Rnd</h4>
+                  {puttsAvg && <p className="text-2xl font-bold">{puttsAvg}</p>}
+                  {mainStatBenchmarks.puttsPerRound && <p className="text-xs text-muted-foreground">Target: {mainStatBenchmarks.puttsPerRound.toFixed(1)}</p>}
+                </div>
+
+                <div onClick={() => openChart('scoreToPar')} className="col-span-2 p-4 rounded-lg shadow bg-card border border-primary text-center cursor-pointer">
+                  <h4 className="text-md font-semibold text-foreground">Score to Par Avg (18 holes)</h4>
+                  {scoreToParAvg && <p className="text-2xl font-bold">{scoreToParAvg}</p>}
+                </div>
+              </div>
+
+              <Dialog open={!!expandedChart} onOpenChange={() => setExpandedChart(null)}>
+                <DialogContent className="max-w-3xl">
+                  {expandedChart && (
+                    <>
+                      <DialogHeader>
+                        <DialogTitle className="text-center text-lg">
+                          {
+                            {
+                              'handicap': 'Handicap Trend',
+                              'fairwaysInRegulation': 'Fairways in Regulation (%)',
+                              'greensInRegulation': 'Greens in Regulation (%)',
+                              'puttsTotal': 'Putts Per Round (18 holes)',
+                              'scoreToPar': 'Score to Par (18 holes)',
+                            }[expandedChart]
+                          }
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="my-4">
+                        <StatsChart
+                          data={expandedChart === 'scoreToPar' ? scoreToParChartData : expandedChart === 'puttsTotal' ? puttsChartData : chartData}
+                          originalData={chartData}
+                          dataKey={expandedChart}
+                          name={{
+                            'handicap': 'Handicap',
+                            'fairwaysInRegulation': 'Fairways Hit',
+                            'greensInRegulation': 'GIR',
+                            'puttsTotal': 'Putts',
+                            'scoreToPar': 'Score to Par',
+                          }[expandedChart]!}
+                          unit={expandedChart === 'fairwaysInRegulation' || expandedChart === 'greensInRegulation' ? '%' : ''}
+                          color="hsl(var(--success))"
+                          yAxisDomain={expandedChart === 'scoreToPar' ? ['dataMin - 1', 'dataMax + 1'] : undefined}
+                          tickFormatter={expandedChart === 'scoreToPar' ? scoreToParFormatter : undefined}
+                          showAverageLine={true}
+                          yAxisLabel={expandedChart}
+                        />
+                      </div>
+                      <div className="p-4 rounded-lg bg-custom-ai-text-bg border border-primary">
+                        <h5 className="font-semibold mb-2 flex items-center"><Sparkles size={16} className="mr-2 text-primary"/>Coach's Insight</h5>
+                        {!trendAnalysis[expandedChart] ? (
+                           <GolfLoadingAnimation />
+                        ) : (
+                          <p className="text-sm text-foreground/90 whitespace-pre-wrap">{trendAnalysis[expandedChart]}</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
+
+
+              <h3 className="text-xl font-semibold mb-3 mt-8 text-center font-headline text-foreground">Scoring Averages</h3>
+              <CustomCard className="md:col-span-2">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div>
                         <p className="font-bold text-lg">Par 3s</p>
@@ -3615,7 +3727,6 @@ const handleBuildPlanWithAI = async () => {
                     </div>
                   </div>
                 </CustomCard>
-              </div>
             </>
           )}
         </CustomCard>
@@ -3777,7 +3888,7 @@ const handleBuildPlanWithAI = async () => {
                                     value={courseSearchTerm}
                                     onChange={(e) => {
                                       setCourseSearchTerm(e.target.value);
-                                      setSelectedCourse(null);
+                                      setCurrentRound(prev => ({...prev, courseName: e.target.value}));
                                     }}
                                     autoComplete="off"
                                 />
@@ -3812,7 +3923,7 @@ const handleBuildPlanWithAI = async () => {
                             <InputField label="Current Handicap" name="currentHandicap" value={currentRound.currentHandicap} onChange={handleInputChange} type="text" placeholder="e.g., 18.3 or +2" inputMode="decimal" />
                             <InputField label="Target Handicap" name="targetHandicap" value={currentRound.targetHandicap} onChange={handleInputChange} type="text" placeholder="e.g., 15 (whole numbers)" inputMode="numeric" />
                             
-                            <Button type="submit" variant="success" className="w-full mt-6" disabled={isCheckingForScorecard || !currentRound.courseName || !currentRound.teePlayedOff || !selectedCourse}>
+                            <Button type="submit" variant="success" className="w-full mt-6" disabled={isCheckingForScorecard || !currentRound.courseName || !currentRound.teePlayedOff}>
                                 {isCheckingForScorecard ? <Loader2 className="animate-spin" /> : "Start Round"}
                             </Button>
                         </form>
@@ -4744,7 +4855,7 @@ const handleBuildPlanWithAI = async () => {
                             activeDrillReflection={activeDrillReflection}
                             drillClarifyingQuestions={drillClarifyingQuestions}
                             isFetchingDrillQuestions={isFetchingDrillQuestions}
-                            onFetchDrillClarifyingQuestions={handleFetchDrillClarifyingQuestions}
+                            onFetchDrillQuestions={handleFetchDrillClarifyingQuestions}
                             drillClarifyingAnswers={drillClarifyingAnswers}
                             onUpdateDrillClarifyingAnswers={(index, answers) => setDrillClarifyingAnswers(prev => ({...prev, [index]: answers}))}
                             aiDrillModifications={aiDrillModifications}
@@ -5788,14 +5899,14 @@ const handleBuildPlanWithAI = async () => {
 
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  if (!isMounted || loading) {
+  if (!isMounted || isUserLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="animate-spin h-12 w-12 text-primary" />
@@ -5811,103 +5922,3 @@ export default function HomePage() {
 }
 
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
