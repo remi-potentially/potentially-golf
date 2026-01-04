@@ -3047,7 +3047,7 @@ const handleBuildPlanWithAI = async () => {
     const sandSavesMade = relevantHoles.reduce((sum, h) => sum + (h.sandSavesMade || 0), 0);
     const threePuttsOrMore = relevantHoles.filter(h => h.putts >= 3).length;
     
-    const scoreToParValue = totalScore - totalParForCompleted;
+    const scoreToParValue = totalScore - totalPar;
     
     const drivingDistances = relevantHoles
         .filter(h => h.par > 3 && h.drivingDistance && h.drivingDistance > 0)
@@ -5914,8 +5914,3 @@ export default function HomePage() {
 
   return <MainApp />;
 }
-
-    
-
-
-
